@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include <string.h>
+#include <sys/wait.h>
 
 void parse(char *input, char **args, int max_args);
 
@@ -12,18 +13,28 @@ int main() {
     while (1) {
         printf("shell> ");
         fgets(input, sizeof(input), stdin);
-        parse(input, args, 64);
-        // strip line
         input[strcspn(input, "\n")] = '\0';
-        printf("you typed: %s\n", input);
+        parse(input, args, 64);
+
+        if (args[0] == NULL) continue;
+        if (strcmp(args[0], "exit") == 0) break;
+
+        pid_t pid = fork();
+
+        if (pid == 0) {
+            execvp(args[0], args);
+            printf("Command not found: %s\n", args[0]);
+            exit(1);
+        } else {
+            waitpid(pid, NULL, 0);
+        }
     }
 }
 
 void parse(char *input, char **args, int max_args) {
+    char *token = strtok(input, " ");
 
     for (int i = 0; i < max_args; i++) {
-
-        char *token = strtok(input, " ");
 
         if (token == NULL) {
             args[i] = NULL;
@@ -31,6 +42,7 @@ void parse(char *input, char **args, int max_args) {
         }
 
         args[i] = token;
-        printf("%s", args[i]);
+        token = strtok(NULL, " ");
     }
+    args[max_args - 1] = NULL;
 }
